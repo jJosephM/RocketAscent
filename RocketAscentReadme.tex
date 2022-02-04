@@ -1,0 +1,112 @@
+\documentclass[11pt]{article}
+
+\linespread{1.3}
+\usepackage[top=1in, bottom=1.25in, left=1.25in, right=1.25in]{geometry}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\numberwithin{equation}{section}
+%\usepackage{xcolor}
+\usepackage[table]{xcolor}
+\usepackage{amsfonts}
+\usepackage{multirow}
+
+\begin{document}
+\title{Rocket Ascent Guidance Readme}
+\author{Jacob Mankenberg}
+\maketitle
+
+
+
+This project is a little outside my area of ``expertise" if you can say I have any, though I'm surprised how well I've understood what I've read so far and just how much my training in physics has prepared me for these topics. For one, the basic premise of the mathematical theory the project employs is variational calculus, something I'm quite familiar with - at least in a few applications to classical mechanics, quantum field theory, thermodynamics and spin lattice models, general relativity and field theory, and some statistical mechanics. In addition, some of the mathematical analysis on which variational principles are built is a common starting point for the study of differentiability on manifolds. In fact, the very first thing discussed in the well known text by Nicolaescu \ref{Nicolaescu} is the notion of a differentiable mapping between Banach spaces. This in turn defines the \textit{Frechet} derivative which a physicist might recognize as the Euler - Lagrange equations. Again, something I am familiar with. Who knew?
+
+This project however, takes a basic variational principle a little further. Graduate texts in mechanics such as Fetter and Walecka \ref{FetWal} and Goldstein \ref{Goldstein} discuss constraints on variational problems, even naming them for easy reference in a github readme on rocket ascent guidance, but do not go much further in developing the general mathematical principles on constrained optimization problems. I needed to learn a bit about optimal control. I will be solely referencing Kamien and Schwartz \ref{OC} in this project - it is considered a standard in the field. I found this book interesting, useful, thought provoking and learned some things that I found a bit surprising. It is meant for analytic economics but is general enough to be useful anywhere, including here.
+
+\section{Mathematical Background on Optimal Control Theory}
+I'll populate this section with a description of the elements of optimal control needed for the program. We'll discuss the specific application and implementation later when covering the actual ascent guidance principle.
+
+\paragraph{The Variational Principle}
+Variational calculus as I know it is basically the extension of finding local extrema in calculus to functionals: functions that map from some function space to the real numbers. In calculus, you compute the derivative of a function and find the zeroes of the derivative to give the points that are either maxima or minima of the functions. We can think about this as varying the independent variable and measuring the change in the function until we find a point where a first order variation does not yield a change in the function. In an analogous manner, for a functional, we vary the independent function - akin to the variable - and find that function whose first order variation does not yield a change in the output of the functional. In other words, we find the function that minimizes or maximizes the value of the functional by changing it until the functional derivative is zero.
+
+In practice it's a little more involved than a simple derivative. We are varying a function...any function. So we need a systematic way to deal with how and where it's being changed and what it can be changed into to be a valid solution. The function may need to satisfy some boundary conditions or some sort of constraint - in the form of an equality, inequaltiy or differential equation - and we need to be able to accomodate those conditions. For this project that's exactly the problem we're trying to solve. We need optimal control.
+
+\subsection{Optimal Control Theory}
+Let's get right into it. There are 2 types of variables in this problem: a control function $u(t)$ and a state variable $x(t)$ governed by a first order differential equation. The simplest problem is to select a control function $u(T)$ to maximize
+\begin{equation}
+\int_{t_0}^{t_1}f(x(t),u(t),t)dt
+\end{equation}
+subject to the following
+\begin{align}
+x'(t) = g(t,x(t),u(t)) \\
+x(t_0) = x_0, fixed \\
+x(t_1) = free
+\end{align}
+The integral is directly influence by $u(t)$ and $x'(t)$ is indirectly influence by $u(t)$ through the differential equation, so even if the goal is to know the form of $x(t)$, knowing $u$ is sufficient.
+
+A standard calculus of variations problem is to maximize
+\begin{equation}
+\int_{t_0}^{t_1}f(x(t),x'(t),t)dt
+\end{equation}
+subject to
+\begin{equation}
+x(t_0) = x_0
+\end{equation}
+which in optimal control is 
+\begin{equation}
+\int_{t_0}^{t_1}f(x(t),u(t),t)dt
+\end{equation}
+subject to
+\begin{align}
+x'(t) = u(t) \\
+x(t_0) = x_0, fixed
+\end{align}
+In general, there are an arbitrary number of control variables and higher order derivaties which may be reduced to a first order problem (though we won't need that here). Thus we see that variational calculus - which may include any number of derivatives of $x(t)$ in the integrand - is a relaxed subset of the problems addressed by optimal control. In fact, I would guess that that is how the field came about.
+
+\subparagraph{Simplest Optimal control Problem}
+As with any theory, it's often easiest to start with a simplified version of the problem you're trying to solve. In classical mechanics this simplification could be considering point particles and frictionless surfaces, in thermodynamics it's adiabatic systems, in quantum mechanics...a single spinless particle in a box. Here we start with a free variable at the terminal point and invoke a Lagrange multiplier procedure to find the maximizing solution $u(t) = u^*(t)$ and $x(t) = x^*(t)$:
+\begin{align}
+\int_{t_0}^{t_1}f(x(t),u(t),t)dt = \int_{t_0}^{t_1}f(x(t),u(t),t)dt + \int_{t_0}^{t_1}dt\lambda(t)(f(x(t),u(t),t) - x'(t)) \nonumber \\
+ - \int_{t_0}^{t_1}dt\lambda(t)x'(t) = -\lambda(t)x(t)|_{t_0}^{t_1} + \int_{t_0}^{t_1}dt\lambda'(t)x(t)
+\end{align}
+so that 
+\begin{equation}
+\int_{t_0}^{t_1}f(x(t),u(t),t)dt = \int_{t_0}^{t_1}dt(f(x(t),u(t),t) + \lambda(t)g(x(t),u(t),t)+\lambda'(t)x(t)) - \lambda(t)x(t)|_{t_0}^{t_1}
+\end{equation}
+The control function $u(t)$ with $x(t_0) = x_0$ and $x'(t) = g(t,x(t),u(t))$ determine the path $x^*(t)$ so the variation will come through $u \to u^* + ah(t)$. Here $h$ is the variation with $a$ the variable parameter. If we let $y(t,a)$ be the state variable described/generated by $u^*$ so that $y(t,a=0) = x^*$ is the optimal state function and $y(t_0,a) = x^*_0$, the \textit{functional} dependent on $a$ is
+\begin{equation}
+J(a) = \int_{t_0}^{t_1}f(y(t,a),u*(t)+ah(t),t)dt = \int_{t_0}^{t_1}fdt + \int_{t_0}^{t_1}dt(\lambda g + \lambda' y) - \lambda y|_{t_0}^{t_1}
+\end{equation}
+$u^*$ is the maximizing/optimal control so $J(a)$ is max at $a = 0 \to J'(0) = 0$:
+\begin{equation}
+J'(0) = \int_{t_0}^{t_1}\big[(\partial_x f + \lambda\partial_x g + \lambda')\partial_a y + (\partial_u f + \lambda\partial_u g)h\big]dt - \lambda(t_1)\partial_ay(t_1,0) = 0
+\end{equation}
+The derivatives are with respect to the arguments of the functions as they have been discussed so far...it should make sense. To make this equation work we need
+\begin{align}
+\lambda(t_1) = 0 \\
+\lambda'(t) = -\big[\partial_xf(t,x^*,u^*) + \lambda(t)\partial_xg(t,x^*,u^*)\big] \\
+\int_{t_0}^{t_1}(\partial_uf + \lambda\partial_ug)hdt = 0, \forall h(t)
+\end{align}
+
+
+
+\begin{thebibliography}{99}
+
+\bibitem{Nicolaescu}
+  Nicolaescu, Liviu (2007). Lectures on the Geometry of Manifolds (2nd ed.). World Scientific. ISBN 978-9811214813. 
+  
+\bibitem{Goldstein}
+  Goldstein, Herbert; Charles P. Poole; John L. Safko (2002). Classical Mechanics (3rd ed.). Addison Wesley. ISBN 978-0-201-65702-9.
+  
+\bibitem{FetWal}
+  Fetter, Alexander; Walecka, John Dirk (2003). Theoretical Mechanics of Particles and Continua. Dover Publications. ISBN 978-0486432618.
+
+\bibitem{Main}
+  Greg Dukeman. "Atmospheric Ascent Guidance for Rocket-Powered Launch Vehicles," AIAA 2002-4559. AIAA Guidance, Navigation, and Control Conference and Exhibit. August 2002. 
+  
+\bibitem{OC}
+  Kamien, M. I.; Schwartz, N. L. (1991). Dynamic Optimization: The Calculus of Variations and Optimal Control in Economics and Management (Second ed.). New York: Elsevier. ISBN 0-444-01609-0.
+  
+
+\end{thebibliography}
+
+
+\end{document}
